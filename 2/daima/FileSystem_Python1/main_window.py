@@ -1,0 +1,305 @@
+#!/usr/bin/env python3
+import sys, os
+from datetime import datetime
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from file_system import FileSystem
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.fs = FileSystem()
+        self.current_open_path = None
+        self.init_ui()
+        self.refresh_all()
+
+    def init_ui(self):
+        self.setWindowTitle("文件系统 - 导入导出版 (1)")
+        self.setMinimumSize(1000, 700)
+        self.setStyleSheet("""
+            QMainWindow, QWidget { background: #1e1e2e; color: #cdd6f4; }
+            QPushButton { background: #313244; border: none; border-radius: 6px; padding: 6px 12px; }
+            QPushButton:hover { background: #45475a; }
+            QPushButton#primary { background: #89b4fa; color: #1e1e2e; }
+            QPushButton#danger { background: #f38ba8; color: #1e1e2e; }
+            QPushButton#success { background: #a6e3a1; color: #1e1e2e; }
+            QLineEdit, QTextEdit { background: #181825; border: 1px solid #45475a; border-radius: 4px; padding: 4px; }
+            QTableWidget { background: #181825; alternate-background-color: #1e1e2e; border: 1px solid #45475a; }
+            QHeaderView::section { background: #313244; padding: 4px; }
+            QTabWidget::pane { border: 1px solid #45475a; border-radius: 6px; }
+            QTabBar::tab { background: #313244; padding: 6px 14px; border-top-left-radius: 4px; border-top-right-radius: 4px; margin-right: 2px; }
+            QTabBar::tab:selected { background: #45475a; }
+            QGroupBox { border: 1px solid #45475a; border-radius: 6px; margin-top: 10px; }
+            QGroupBox::title { color: #89b4fa; }
+            QStatusBar { background: #181825; color: #6c7086; }
+        """)
+
+        central = QWidget(); self.setCentralWidget(central)
+        layout = QVBoxLayout(central)
+
+        top = QFrame(); top.setStyleSheet("background: #313244; border-radius: 8px; padding: 6px;")
+        top_layout = QHBoxLayout(top)
+        top_layout.addWidget(QLabel("👤 张三 | 学号: 2024001"))
+        top_layout.addStretch()
+        self.user_status = QLabel("🔐 未登录")
+        self.user_status.setStyleSheet("color: #f9e2af;")
+        top_layout.addWidget(self.user_status)
+        time_label = QLabel(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        time_label.setStyleSheet("color: #6c7086;")
+        top_layout.addWidget(time_label)
+        timer = QTimer(self); timer.timeout.connect(lambda: time_label.setText(datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        timer.start(1000)
+        layout.addWidget(top)
+
+        tabs = QTabWidget()
+        self.login_tab = self._create_login_tab()
+        self.file_tab = self._create_file_tab()
+        self.user_tab = self._create_user_tab()
+        tabs.addTab(self.login_tab, "登录/注册")
+        tabs.addTab(self.file_tab, "文件管理")
+        tabs.addTab(self.user_tab, "用户管理")
+        layout.addWidget(tabs)
+        self.status_bar = QStatusBar(); self.setStatusBar(self.status_bar); self.status_bar.showMessage("就绪")
+
+    def _create_login_tab(self):
+        tab = QWidget(); layout = QVBoxLayout(tab); layout.setSpacing(20); layout.setContentsMargins(50,40,50,40)
+        title = QLabel("🔐 用户登录 / 注册"); title.setStyleSheet("font-size:22px; font-weight:bold; color:#89b4fa;"); title.setAlignment(Qt.AlignCenter); layout.addWidget(title)
+        g1 = QGroupBox("登录"); g1l = QGridLayout(g1)
+        g1l.addWidget(QLabel("用户名:"),0,0); self.login_user = QLineEdit(); self.login_user.setPlaceholderText("admin"); g1l.addWidget(self.login_user,0,1)
+        g1l.addWidget(QLabel("密码:"),1,0); self.login_pass = QLineEdit(); self.login_pass.setEchoMode(QLineEdit.Password); self.login_pass.setPlaceholderText("admin123"); g1l.addWidget(self.login_pass,1,1)
+        btn = QPushButton("登录"); btn.setObjectName("primary"); btn.clicked.connect(self._login); g1l.addWidget(btn,2,0,1,2)
+        layout.addWidget(g1)
+        g2 = QGroupBox("注册"); g2l = QGridLayout(g2)
+        g2l.addWidget(QLabel("用户名:"),0,0); self.reg_user = QLineEdit(); self.reg_user.setPlaceholderText("至少3字符"); g2l.addWidget(self.reg_user,0,1)
+        g2l.addWidget(QLabel("密码:"),1,0); self.reg_pass = QLineEdit(); self.reg_pass.setEchoMode(QLineEdit.Password); self.reg_pass.setPlaceholderText("至少6字符"); g2l.addWidget(self.reg_pass,1,1)
+        g2l.addWidget(QLabel("确认:"),2,0); self.reg_confirm = QLineEdit(); self.reg_confirm.setEchoMode(QLineEdit.Password); g2l.addWidget(self.reg_confirm,2,1)
+        btn2 = QPushButton("注册"); btn2.setObjectName("success"); btn2.clicked.connect(self._register); g2l.addWidget(btn2,3,0,1,2)
+        layout.addWidget(g2); layout.addStretch(); return tab
+
+    def _login(self):
+        u = self.login_user.text().strip(); p = self.login_pass.text().strip()
+        if not u or not p: QMessageBox.warning(self,"错误","用户名和密码不能为空"); return
+        if self.fs.login_user(u,p):
+            self.user_status.setText(f"已登录: {u}"); self.user_status.setStyleSheet("color:#a6e3a1;")
+            self.refresh_all(); self.status_bar.showMessage(f"欢迎 {u}")
+        else: QMessageBox.warning(self,"登录失败","用户名或密码错误")
+
+    def _register(self):
+        u = self.reg_user.text().strip(); p = self.reg_pass.text().strip(); c = self.reg_confirm.text().strip()
+        if not u or not p: QMessageBox.warning(self,"错误","用户名和密码不能为空"); return
+        if p != c: QMessageBox.warning(self,"错误","两次密码不一致"); return
+        if len(u)<3 or len(p)<6: QMessageBox.warning(self,"错误","用户名≥3字符，密码≥6字符"); return
+        if self.fs.register_user(u,p):
+            QMessageBox.information(self,"成功",f"用户 {u} 注册成功！请登录。")
+            self.reg_user.clear(); self.reg_pass.clear(); self.reg_confirm.clear(); self.refresh_users()
+        else: QMessageBox.warning(self,"注册失败","用户名已存在或不符合要求")
+
+    def _create_file_tab(self):
+        tab = QWidget(); layout = QVBoxLayout(tab)
+        nav = QHBoxLayout()
+        self.path_display = QLineEdit("/"); self.path_display.setReadOnly(True); nav.addWidget(self.path_display,1)
+        refresh_btn = QPushButton("刷新"); refresh_btn.clicked.connect(self.refresh_files); nav.addWidget(refresh_btn)
+        home_btn = QPushButton("主页"); home_btn.clicked.connect(self._go_home); nav.addWidget(home_btn)
+        up_btn = QPushButton("上级"); up_btn.clicked.connect(self._go_up); nav.addWidget(up_btn)
+        layout.addLayout(nav)
+
+        self.file_table = QTableWidget(); self.file_table.setColumnCount(5); self.file_table.setHorizontalHeaderLabels(["权限","大小","修改时间","名称","类型"])
+        self.file_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch); self.file_table.setAlternatingRowColors(True)
+        self.file_table.cellDoubleClicked.connect(self._on_file_double_click); layout.addWidget(self.file_table,1)
+
+        btns = QHBoxLayout()
+        mkdir_btn = QPushButton("新建目录"); mkdir_btn.clicked.connect(self._mkdir); btns.addWidget(mkdir_btn)
+        create_btn = QPushButton("新建文件"); create_btn.clicked.connect(self._create_file); btns.addWidget(create_btn)
+        del_btn = QPushButton("删除"); del_btn.setObjectName("danger"); del_btn.clicked.connect(self._delete); btns.addWidget(del_btn)
+        import_btn = QPushButton("导入"); import_btn.setObjectName("primary"); import_btn.clicked.connect(self._import); btns.addWidget(import_btn)
+        export_btn = QPushButton("导出"); export_btn.clicked.connect(self._export); btns.addWidget(export_btn)
+        info_btn = QPushButton("属性"); info_btn.clicked.connect(self._show_info); btns.addWidget(info_btn)
+        btns.addStretch()
+        open_btn = QPushButton("打开查看"); open_btn.setObjectName("primary"); open_btn.clicked.connect(self._open_selected); btns.addWidget(open_btn)
+        layout.addLayout(btns)
+
+        search = QHBoxLayout()
+        self.search_input = QLineEdit(); self.search_input.setPlaceholderText("搜索文件名..."); search.addWidget(self.search_input,1)
+        search_btn = QPushButton("搜索"); search_btn.setObjectName("primary"); search_btn.clicked.connect(self._search); search.addWidget(search_btn)
+        layout.addLayout(search)
+        self.search_results = QListWidget(); self.search_results.setMaximumHeight(60); self.search_results.itemDoubleClicked.connect(self._on_search_click)
+        layout.addWidget(self.search_results)
+
+        viewer = QGroupBox("文件查看器")
+        vlayout = QVBoxLayout(viewer)
+        info_line = QHBoxLayout()
+        self.file_name_label = QLabel("未选择文件"); self.file_name_label.setStyleSheet("font-weight:bold; color:#89b4fa;"); info_line.addWidget(self.file_name_label)
+        info_line.addStretch(); self.file_info_label = QLabel(""); self.file_info_label.setStyleSheet("color:#6c7086;"); info_line.addWidget(self.file_info_label)
+        vlayout.addLayout(info_line)
+        self.file_content = QTextEdit(); self.file_content.setPlaceholderText("双击文件或点击「打开查看」查看内容"); self.file_content.setStyleSheet("font-family:Monospace; font-size:12px; background:#0f0f1a;")
+        vlayout.addWidget(self.file_content)
+        vbtns = QHBoxLayout()
+        save_btn = QPushButton("保存"); save_btn.setObjectName("success"); save_btn.clicked.connect(self._save_content); vbtns.addWidget(save_btn)
+        reload_btn = QPushButton("重新加载"); reload_btn.clicked.connect(self._reload); vbtns.addWidget(reload_btn)
+        clear_btn = QPushButton("清空"); clear_btn.clicked.connect(self.file_content.clear); vbtns.addWidget(clear_btn)
+        vbtns.addStretch(); vlayout.addLayout(vbtns)
+        layout.addWidget(viewer)
+        return tab
+
+    def _create_user_tab(self):
+        tab = QWidget(); layout = QVBoxLayout(tab)
+        info = QGroupBox("当前用户信息"); infol = QFormLayout(info)
+        self.user_info = QLabel("未登录"); self.user_info.setStyleSheet("color:#f9e2af;"); infol.addRow("状态:", self.user_info)
+        self.uid_label = QLabel("-"); infol.addRow("UID:", self.uid_label)
+        self.gid_label = QLabel("-"); infol.addRow("GID:", self.gid_label)
+        self.home_label = QLabel("-"); infol.addRow("主目录:", self.home_label)
+        logout_btn = QPushButton("登出"); logout_btn.setObjectName("danger"); logout_btn.clicked.connect(self._logout); infol.addRow(logout_btn)
+        layout.addWidget(info)
+        userlist = QGroupBox("系统用户列表"); ul = QVBoxLayout(userlist); self.user_list = QListWidget(); ul.addWidget(self.user_list); refresh_user_btn = QPushButton("刷新用户列表"); refresh_user_btn.clicked.connect(self.refresh_users); ul.addWidget(refresh_user_btn); layout.addWidget(userlist)
+        return tab
+
+    def _go_home(self):
+        if self.fs.is_user_logged_in(): self.fs.cd(f"/home/{self.fs.get_current_username()}"); self.refresh_files()
+    def _go_up(self):
+        if self.fs.cwd_path != "/": self.fs.cd(os.path.dirname(self.fs.cwd_path)); self.refresh_files()
+    def _on_file_double_click(self, row, col):
+        name = self.file_table.item(row,3).text()
+        if self.file_table.item(row,4).text() == "目录":
+            self.fs.cd(self.fs.cwd_path + "/" + name if self.fs.cwd_path != "/" else "/" + name); self.refresh_files()
+        else: self._open_file(name)
+    def _open_file(self, name):
+        path = self.fs.cwd_path + "/" + name if self.fs.cwd_path != "/" else "/" + name
+        self.current_open_path = path; self.file_name_label.setText(f"文件: {name}")
+        fd = self.fs.open_file(path)
+        if fd >= 0:
+            content = self.fs.read_file(fd); self.fs.close_file(fd)
+            self.file_content.setText(content)
+            lines = content.count('\n')+1 if content else 0
+            self.file_info_label.setText(f"行数: {lines} | 大小: {len(content)} 字节")
+            self.status_bar.showMessage(f"已打开: {name}")
+        else: QMessageBox.warning(self,"错误",f"无法打开文件: {name}"); self.file_name_label.setText("未选择文件")
+    def _open_selected(self):
+        row = self.file_table.currentRow()
+        if row < 0: QMessageBox.warning(self,"错误","请先选择文件"); return
+        name = self.file_table.item(row,3).text()
+        if self.file_table.item(row,4).text() == "目录":
+            self.fs.cd(self.fs.cwd_path + "/" + name if self.fs.cwd_path != "/" else "/" + name); self.refresh_files()
+        else: self._open_file(name)
+    def _mkdir(self):
+        if not self.fs.is_user_logged_in(): QMessageBox.warning(self,"错误","请先登录"); return
+        name, ok = QInputDialog.getText(self,"新建目录","目录名:")
+        if ok and name.strip():
+            path = self.fs.cwd_path + "/" + name.strip() if self.fs.cwd_path != "/" else "/" + name.strip()
+            if self.fs.mkdir(path): self.refresh_files(); self.status_bar.showMessage(f"目录 {name} 创建成功")
+            else: QMessageBox.warning(self,"错误","创建失败")
+    def _create_file(self):
+        if not self.fs.is_user_logged_in(): QMessageBox.warning(self,"错误","请先登录"); return
+        name, ok = QInputDialog.getText(self,"新建文件","文件名:")
+        if ok and name.strip():
+            path = self.fs.cwd_path + "/" + name.strip() if self.fs.cwd_path != "/" else "/" + name.strip()
+            if self.fs.create_file(path): self.refresh_files(); self._open_file(name.strip()); self.status_bar.showMessage(f"文件 {name} 创建成功")
+            else: QMessageBox.warning(self,"错误","创建失败")
+    def _delete(self):
+        row = self.file_table.currentRow()
+        if row < 0: QMessageBox.warning(self,"错误","请先选择项目"); return
+        name = self.file_table.item(row,3).text()
+        path = self.fs.cwd_path + "/" + name if self.fs.cwd_path != "/" else "/" + name
+        reply = QMessageBox.question(self,"确认删除",f"删除 '{name}' ?",QMessageBox.Yes|QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            if not self.fs.delete_file(path) and not self.fs.rmdir(path):
+                QMessageBox.warning(self,"错误","删除失败"); return
+            self.refresh_files(); self.status_bar.showMessage(f"已删除 {name}")
+    def _import(self):
+        if not self.fs.is_user_logged_in(): QMessageBox.warning(self,"错误","请先登录"); return
+        fpath, _ = QFileDialog.getOpenFileName(self, "选择文件", os.path.expanduser("~"), "所有文件 (*.*)")
+        if not fpath: return
+        fname = os.path.basename(fpath)
+        fs_path = self.fs.cwd_path + "/" + fname if self.fs.cwd_path != "/" else "/" + fname
+        if self.fs.import_file(fpath, fs_path):
+            self.refresh_files(); self._open_file(fname); self.status_bar.showMessage(f"导入成功: {fname}")
+        else: QMessageBox.warning(self,"错误","导入失败")
+    def _export(self):
+        row = self.file_table.currentRow()
+        if row < 0: QMessageBox.warning(self,"错误","请先选择文件"); return
+        name = self.file_table.item(row,3).text()
+        if self.file_table.item(row,4).text() == "目录": QMessageBox.warning(self,"错误","请选择文件"); return
+        save_path, _ = QFileDialog.getSaveFileName(self, "保存文件", name)
+        if not save_path: return
+        fs_path = self.fs.cwd_path + "/" + name if self.fs.cwd_path != "/" else "/" + name
+        if self.fs.export_file(fs_path, save_path): self.status_bar.showMessage(f"导出成功: {name}")
+        else: QMessageBox.warning(self,"错误","导出失败")
+    def _show_info(self):
+        row = self.file_table.currentRow()
+        if row < 0: QMessageBox.warning(self,"错误","请先选择项目"); return
+        name = self.file_table.item(row,3).text()
+        path = self.fs.cwd_path + "/" + name if self.fs.cwd_path != "/" else "/" + name
+        info = self.fs.get_file_info(path); QMessageBox.information(self,"文件信息",info)
+    def _save_content(self):
+        if not self.current_open_path: QMessageBox.warning(self,"错误","没有打开的文件"); return
+        content = self.file_content.toPlainText()
+        fd = self.fs.open_file(self.current_open_path)
+        if fd >= 0:
+            if self.fs.write_file(fd, content, False):
+                self.status_bar.showMessage("保存成功")
+                lines = content.count('\n')+1 if content else 0
+                self.file_info_label.setText(f"行数: {lines} | 大小: {len(content)} 字节")
+            else: QMessageBox.warning(self,"错误","保存失败")
+            self.fs.close_file(fd)
+        else: QMessageBox.warning(self,"错误","无法打开文件")
+    def _reload(self):
+        if not self.current_open_path: QMessageBox.warning(self,"错误","没有打开的文件"); return
+        name = os.path.basename(self.current_open_path)
+        fd = self.fs.open_file(self.current_open_path)
+        if fd >= 0:
+            content = self.fs.read_file(fd); self.fs.close_file(fd)
+            self.file_content.setText(content)
+            lines = content.count('\n')+1 if content else 0
+            self.file_info_label.setText(f"行数: {lines} | 大小: {len(content)} 字节")
+            self.status_bar.showMessage("重新加载完成")
+        else: QMessageBox.warning(self,"错误","重新加载失败")
+    def _search(self):
+        keyword = self.search_input.text().strip()
+        if not keyword: QMessageBox.warning(self,"错误","请输入关键词"); return
+        result = self.fs.search_file(keyword)
+        self.search_results.clear()
+        if result == "文件未找到": self.search_results.addItem("未找到")
+        else:
+            lines = result.split('\n')
+            for line in lines: self.search_results.addItem(line)
+            self.status_bar.showMessage(f"找到 {len(lines)} 个结果")
+    def _on_search_click(self, item):
+        path = item.text()
+        if path.startswith('/'):
+            name = os.path.basename(path); dirpath = os.path.dirname(path)
+            self.fs.cd(dirpath); self.refresh_files(); self._open_file(name)
+    def _logout(self):
+        self.fs.logout_user(); self.user_status.setText("🔐 未登录"); self.user_status.setStyleSheet("color:#f9e2af;")
+        self.current_open_path = None; self.file_name_label.setText("未选择文件"); self.file_content.clear(); self.file_info_label.setText("")
+        self.refresh_all()
+    def refresh_all(self):
+        self.refresh_files(); self.refresh_users(); self._update_user_info()
+    def refresh_files(self):
+        if not self.fs.is_user_logged_in(): self.file_table.setRowCount(0); self.path_display.setText("/"); return
+        self.path_display.setText(self.fs.cwd_path)
+        entries = self.fs.ls(); self.file_table.setRowCount(len(entries))
+        for row, line in enumerate(entries):
+            parts = line.split()
+            if len(parts) >= 4:
+                self.file_table.setItem(row,0,QTableWidgetItem(parts[0]))
+                self.file_table.setItem(row,1,QTableWidgetItem(parts[1]))
+                self.file_table.setItem(row,2,QTableWidgetItem(parts[2]+" "+parts[3]))
+                name = " ".join(parts[4:]) if len(parts)>4 else ""
+                is_dir = name.endswith("/")
+                if is_dir: name = name[:-1]; ftype = "目录"
+                else: ftype = "文件"
+                self.file_table.setItem(row,3,QTableWidgetItem(name))
+                self.file_table.setItem(row,4,QTableWidgetItem(ftype))
+    def refresh_users(self):
+        self.user_list.clear()
+        for u in self.fs.get_all_users(): self.user_list.addItem(f"{u.username} (UID: {u.uid})")
+    def _update_user_info(self):
+        if self.fs.is_user_logged_in():
+            u = self.fs.current_user; self.user_info.setText(f"已登录: {u.username}"); self.user_info.setStyleSheet("color:#a6e3a1;")
+            self.uid_label.setText(str(u.uid)); self.gid_label.setText(str(u.gid)); self.home_label.setText(u.home)
+        else:
+            self.user_info.setText("未登录"); self.user_info.setStyleSheet("color:#f9e2af;")
+            self.uid_label.setText("-"); self.gid_label.setText("-"); self.home_label.setText("-")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv); app.setStyle("Fusion")
+    win = MainWindow(); win.show(); sys.exit(app.exec_())

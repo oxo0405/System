@@ -1,0 +1,40 @@
+{
+  "root": {
+    "name": "/",
+    "type": 1,
+    "size": 0,
+    "create_time": 1782221253.8194752,
+    "modify_time": 1782221253.8194752,
+    "access_time": 1782221253.8194752,
+    "owner_uid": 0,
+    "owner_gid": 0,
+    "permission": 493,
+    "blocks": [],
+    "content": "[]"
+  },
+  "cwd_path": "/",
+  "users": {
+    "1000": {
+      "uid": 1000,
+      "gid": 100,
+      "username": "admin",
+      "password": "admin123",
+      "home": "/home/admin",
+      "last_login": 0
+    },
+    "1001": {
+      "uid": 1001,
+      "gid": 101,
+      "username": "guest",
+      "password": "guest123",
+      "home": "/home/guest",
+      "last_login": 0
+    }
+  },
+  "name_to_uid": {
+    "admin": 1000,
+    "guest": 1001
+  },
+  "next_uid": 1002,
+  "next_gid": 102
+}
