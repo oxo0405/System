@@ -1,0 +1,40 @@
+{
+  "root": {
+    "name": "/",
+    "type": 1,
+    "size": 2064,
+    "create_time": 1782121803.6494207,
+    "modify_time": 1782122082.0801587,
+    "access_time": 1782121803.6494207,
+    "owner_uid": 0,
+    "owner_gid": 0,
+    "permission": 493,
+    "blocks": [],
+    "content": "[{\"name\": \"home\", \"type\": 1, \"size\": 0, \"create_time\": 1782121803.6494527, \"modify_time\": 1782121803.6494527, \"access_time\": 1782121803.6494527, \"owner_uid\": 0, \"owner_gid\": 0, \"permission\": 493, \"blocks\": [], \"content\": \"[]\"}, {\"name\": \"CMakeLists.txt\", \"type\": 0, \"size\": 1004, \"create_time\": 1782121952.8832774, \"modify_time\": 1782121952.883279, \"access_time\": 1782121952.8832774, \"owner_uid\": 1000, \"owner_gid\": 100, \"permission\": 420, \"blocks\": [], \"content\": \"cmake_minimum_required(VERSION 3.10)\\nproject(filesystem_core)\\n\\nset(CMAKE_CXX_STANDARD 17)\\nset(CMAKE_CXX_STANDARD_REQUIRED ON)\\nset(CMAKE_BUILD_TYPE Release)\\n\\n# \\u67e5\\u627ePython\\nfind_package(PythonLibs REQUIRED)\\nfind_package(PythonInterp REQUIRED)\\n\\n# \\u4e0b\\u8f7dpybind11\\ninclude(FetchContent)\\nFetchContent_Declare(\\n    pybind11\\n    GIT_REPOSITORY https://github.com/pybind/pybind11.git\\n    GIT_TAG v2.10.0\\n)\\nFetchContent_MakeAvailable(pybind11)\\n\\n# \\u6e90\\u6587\\u4ef6\\nset(SOURCES\\n    src/core/FCB.cpp\\n    src/core/Directory.cpp\\n    src/core/User.cpp\\n    src/core/FileSystem.cpp\\n    src/binding/pybind_wrapper.cpp\\n)\\n\\n# \\u521b\\u5efa\\u5171\\u4eab\\u5e93\\npybind11_add_module(filesystem_core ${SOURCES})\\n\\ntarget_include_directories(filesystem_core PRIVATE\\n    ${CMAKE_CURRENT_SOURCE_DIR}/src/core\\n    ${PYTHON_INCLUDE_DIRS}\\n)\\n\\ntarget_compile_options(filesystem_core PRIVATE -Wall -Wextra -O3)\\n\\ntarget_link_libraries(filesystem_core PRIVATE ${PYTHON_LIBRARIES})\\n\\n# \\u8bbe\\u7f6e\\u8f93\\u51fa\\u76ee\\u5f55\\nset_target_properties(filesystem_core PROPERTIES\\n    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}\\n)\\n\"}, {\"name\": \"1\", \"type\": 0, \"size\": 0, \"create_time\": 1782122007.0242977, \"modify_time\": 1782122007.0242977, \"access_time\": 1782122007.0242977, \"owner_uid\": 1000, \"owner_gid\": 100, \"permission\": 420, \"blocks\": [], \"content\": \"\"}, {\"name\": \"Z\", \"type\": 1, \"size\": 0, \"create_time\": 1782122082.0800648, \"modify_time\": 1782122082.0800648, \"access_time\": 1782122082.0800648, \"owner_uid\": 1000, \"owner_gid\": 100, \"permission\": 493, \"blocks\": [], \"content\": \"[]\"}]"
+  },
+  "cwd_path": "/",
+  "users": {
+    "1000": {
+      "uid": 1000,
+      "gid": 100,
+      "username": "admin",
+      "password": "admin123",
+      "home": "/home/admin",
+      "last_login": 1782985667.9168944
+    },
+    "1001": {
+      "uid": 1001,
+      "gid": 101,
+      "username": "guest",
+      "password": "guest123",
+      "home": "/home/guest",
+      "last_login": 0
+    }
+  },
+  "name_to_uid": {
+    "admin": 1000,
+    "guest": 1001
+  },
+  "next_uid": 1002,
+  "next_gid": 102
+}
